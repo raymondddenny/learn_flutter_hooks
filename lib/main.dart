@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -26,30 +28,38 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class CountDown extends ValueNotifier<int> {
+  late StreamSubscription sub;
+
+  CountDown({required int from}) : super(from) {
+    sub = Stream.periodic(const Duration(seconds: 1), (val) => from - val)
+        .takeWhile((value) => value >= 0)
+        .listen((value) {
+      this.value = value;
+    });
+  }
+
+  @override
+  void dispose() {
+    sub.cancel();
+    super.dispose();
+  }
+}
+
 class MyHomePage extends HookWidget {
   const MyHomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // useMemoized is use for caching the future object,
-    // so that it will not be re-created every time the widget is built.
-    // for this example the image is not redownloaded every time the widget is built.
-    final futureImage = useMemoized(() => NetworkAssetBundle(Uri.parse(url))
-        .load(url)
-        .then((data) => data.buffer.asUint8List())
-        .then((data) => Image.memory(data)));
-
-    // need to consume the image
-    final image = useFuture(futureImage);
+    final countDown = useMemoized(() => CountDown(from: 10)); // usememoized is used to caching
+    final notifier =
+        useListenable(countDown); //uselistenable is used to listen to changes and called the build method again
+    print('HELLOW');
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home page'),
       ),
-      body: Column(
-        children: [
-          image.data,
-        ].compactMap().toList(),
-      ),
+      body: Text(notifier.value.toString()),
     );
   }
 }
