@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:testingflutterhooks/extension/compact_map.dart';
+
+import 'constants.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,28 +31,24 @@ class MyHomePage extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = useTextEditingController();
-    final text = useState('');
+    // useMemoized is use for caching the future object,
+    // so that it will not be re-created every time the widget is built.
+    // for this example the image is not redownloaded every time the widget is built.
+    final futureImage = useMemoized(() => NetworkAssetBundle(Uri.parse(url))
+        .load(url)
+        .then((data) => data.buffer.asUint8List())
+        .then((data) => Image.memory(data)));
 
-    useEffect(() {
-      controller.addListener(() {
-        text.value = controller.text;
-      });
-      return null;
-    }, [controller]);
-
+    // need to consume the image
+    final image = useFuture(futureImage);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home page'),
       ),
       body: Column(
         children: [
-          TextField(
-            controller: controller,
-          ),
-          const SizedBox(height: 20.0),
-          Text('You typed : ${text.value}')
-        ],
+          image.data,
+        ].compactMap().toList(),
       ),
     );
   }
