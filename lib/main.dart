@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -32,64 +33,35 @@ class MyHomePage extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final opacity = useAnimationController(
-      duration: const Duration(seconds: 1),
-      initialValue: 1,
-      upperBound: 1,
-      lowerBound: 0.0,
-    );
-    final size = useAnimationController(
-      duration: const Duration(seconds: 1),
-      initialValue: 1,
-      upperBound: 1,
-      lowerBound: 0.0,
-    );
-
-    final scrollController = useScrollController();
-
-    useEffect(() {
-      scrollController.addListener(() {
-        final newOpacity = max(imageHeight - scrollController.offset, 0.0);
-        final normalize = newOpacity.normalized(0.0, imageHeight).toDouble();
-        opacity.value = normalize;
-        size.value = normalize;
-      });
-      return null;
-    }, [scrollController]);
+    late final StreamController<double> controller;
+    controller = useStreamController<double>(onListen: () {
+      controller.sink.add(0.0);
+    });
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home page'),
       ),
-      body: Column(
-        children: [
-          SizeTransition(
-            // this will resize the widget as we scroll
-            sizeFactor: size,
-            axis: Axis.vertical,
-            axisAlignment: -1.0,
-            child: FadeTransition(
-              opacity: opacity,
-              child: Image.network(
-                url,
-                height: imageHeight,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              itemCount: 100,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(
-                    'Person ${index + 1}',
-                  ),
-                );
+      body: StreamBuilder<double>(
+        stream: controller.stream,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const CircularProgressIndicator();
+          } else {
+            final rotation = snapshot.data ?? 0.0;
+
+            return GestureDetector(
+              onTap: () {
+                controller.sink.add(rotation + 10);
               },
-            ),
-          )
-        ],
+              child: RotationTransition(
+                turns: AlwaysStoppedAnimation(rotation / 360.0),
+                child: Center(
+                  child: Image.network(url),
+                ),
+              ),
+            );
+          }
+        },
       ),
     );
   }
